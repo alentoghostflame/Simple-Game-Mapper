@@ -44,13 +44,9 @@ class MainLayout:
 
         self.grid = Gtk.Grid(valign="fill", halign="fill")
         self.top_bar = TopMenuBar()
-        # self.scrolled_map = Gtk.ScrolledWindow(hscrollbar_policy=Gtk.PolicyType.AUTOMATIC,
-        #                                        vscrollbar_policy=Gtk.PolicyType.AUTOMATIC)
         self.map_container = MapContainer(self.config, self.ram_data)
 
     def setup(self):
-        # self.scrolled_map.add(self.map_container.main_grid)
-        # self.grid.attach(self.scrolled_map, 0, 1, 1, 1)
         self.grid.attach(self.map_container.main_grid, 0, 1, 1, 1)
         self.grid.attach(self.top_bar.toolbar, 0, 0, 1, 1)
 
