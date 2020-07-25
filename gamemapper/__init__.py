@@ -1,0 +1,1 @@
+from gamemapper.simple_game_mapper import SimpleGameMapper

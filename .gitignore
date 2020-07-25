@@ -1,2 +1,5 @@
 .idea/
 venv/
+map_config.yaml
+saves/
+*.pyc
