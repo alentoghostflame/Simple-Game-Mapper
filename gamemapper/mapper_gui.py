@@ -44,13 +44,14 @@ class MainLayout:
 
         self.grid = Gtk.Grid(valign="fill", halign="fill")
         self.top_bar = TopMenuBar()
-        self.scrolled_map = Gtk.ScrolledWindow(hscrollbar_policy=Gtk.PolicyType.AUTOMATIC,
-                                               vscrollbar_policy=Gtk.PolicyType.AUTOMATIC)
+        # self.scrolled_map = Gtk.ScrolledWindow(hscrollbar_policy=Gtk.PolicyType.AUTOMATIC,
+        #                                        vscrollbar_policy=Gtk.PolicyType.AUTOMATIC)
         self.map_container = MapContainer(self.config, self.ram_data)
 
     def setup(self):
-        self.scrolled_map.add(self.map_container.main_grid)
-        self.grid.attach(self.scrolled_map, 0, 1, 1, 1)
+        # self.scrolled_map.add(self.map_container.main_grid)
+        # self.grid.attach(self.scrolled_map, 0, 1, 1, 1)
+        self.grid.attach(self.map_container.main_grid, 0, 1, 1, 1)
         self.grid.attach(self.top_bar.toolbar, 0, 0, 1, 1)
 
         self.top_bar.set_map_reset_func(self.map_container.reset_layout)
@@ -62,12 +63,22 @@ class TopMenuBar:
     def __init__(self):
         self.toolbar = Gtk.Toolbar()
         self.new_button = Gtk.ToolButton()
+        self.save_button = Gtk.ToolButton()
+        self.open_button = Gtk.ToolButton()
 
     def setup(self):
         self.new_button.set_icon_name(Gtk.STOCK_NEW)
         self.new_button.set_label("New")
 
+        self.save_button.set_icon_name(Gtk.STOCK_SAVE)
+        self.save_button.set_label("Save")
+
+        self.open_button.set_icon_name(Gtk.STOCK_OPEN)
+        self.open_button.set_label("Load")
+
         self.toolbar.insert(self.new_button, 0)
+        self.toolbar.insert(self.save_button, 1)
+        self.toolbar.insert(self.open_button, 2)
 
     def set_map_reset_func(self, function):
         self.new_button.connect("clicked", function)
