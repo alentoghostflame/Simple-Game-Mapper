@@ -1,17 +1,18 @@
-from gamemapper.storage import ConfigData, RamData, TileData
+from gamemapper.storage import ConfigData, RamData, TileData, SaveManager
 import gi
 gi.require_version("Gtk", "3.0")
 from gi.repository import Gtk, Gdk
 
 
 class SimpleGameMapperGUI:
-    def __init__(self, config: ConfigData, ram_data: RamData):
+    def __init__(self, config: ConfigData, ram_data: RamData, saves: SaveManager):
         self.config: ConfigData = config
         self.ram_data: RamData = ram_data
+        self.saves: SaveManager = saves
 
         self.window = Gtk.Window()
         self.css_provider = Gtk.CssProvider()
-        self.main_layout = MainLayout(self.config, self.ram_data)
+        self.main_layout = MainLayout(self.config, self.ram_data, self.saves)
 
     def setup(self):
         self.setup_window()
@@ -38,12 +39,13 @@ class SimpleGameMapperGUI:
 
 
 class MainLayout:
-    def __init__(self, config: ConfigData, ram_data: RamData):
+    def __init__(self, config: ConfigData, ram_data: RamData, saves: SaveManager):
         self.config: ConfigData = config
         self.ram_data: RamData = ram_data
+        self.saves: SaveManager = saves
 
         self.grid = Gtk.Grid(valign="fill", halign="fill")
-        self.top_bar = TopMenuBar()
+        self.top_bar = TopMenuBar(self.saves)
         self.map_container = MapContainer(self.config, self.ram_data)
 
     def setup(self):
@@ -56,7 +58,8 @@ class MainLayout:
 
 
 class TopMenuBar:
-    def __init__(self):
+    def __init__(self, saves: SaveManager):
+        self.saves = saves
         self.toolbar = Gtk.Toolbar()
         self.new_button = Gtk.ToolButton()
         self.save_button = Gtk.ToolButton()
@@ -68,6 +71,7 @@ class TopMenuBar:
 
         self.save_button.set_icon_name(Gtk.STOCK_SAVE)
         self.save_button.set_label("Save")
+        self.save_button.connect("clicked", self.on_save_pressed)
 
         self.open_button.set_icon_name(Gtk.STOCK_OPEN)
         self.open_button.set_label("Load")
@@ -78,6 +82,29 @@ class TopMenuBar:
 
     def set_map_reset_func(self, function):
         self.new_button.connect("clicked", function)
+
+    def on_save_pressed(self, button):
+        dialog = Gtk.FileChooserDialog(title="Save to...", action=Gtk.FileChooserAction.SAVE)
+        dialog.set_do_overwrite_confirmation(True)
+        dialog.set_current_folder("saves")
+        dialog.set_current_name("map_save.yaml")
+        dialog.add_button(Gtk.STOCK_CANCEL, Gtk.ResponseType.CANCEL)
+        dialog.add_button(Gtk.STOCK_SAVE, Gtk.ResponseType.OK)
+
+        yaml_filter = Gtk.FileFilter()
+        yaml_filter.set_name("YAML file")
+        yaml_filter.add_mime_type("text/yaml")
+        dialog.add_filter(yaml_filter)
+
+        response = dialog.run()
+
+        if response == Gtk.ResponseType.OK:
+            file_path = dialog.get_filename()
+            self.saves.save_from_ram(file_path)
+        elif response == Gtk.ResponseType.CANCEL:
+            print("CANCEL PRESSED")
+
+        dialog.destroy()
 
 
 class MapContainer:
