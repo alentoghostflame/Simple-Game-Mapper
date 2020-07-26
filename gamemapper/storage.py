@@ -63,6 +63,8 @@ class ConfigData(BaseConfig, name="map_config"):
         self.default_y_start: int = -2
         self.default_y_end: int = 2
 
+        self.square_size: int = 50
+
 
 class TileData:
     def __init__(self, x: int = 0, y: int = 0, enabled: bool = False, state: dict = None):
@@ -100,6 +102,8 @@ class MapSaveData:
             assert isinstance(state.get("x_end", None), int)
             assert isinstance(state.get("y_start", None), int)
             assert isinstance(state.get("y_end", None), int)
+            assert state.get("x_start", 1) < state.get("x_end", 0)
+            assert state.get("y_start", 1) < state.get("y_end", 0)
             return True
         except AssertionError:
             return False
@@ -132,7 +136,7 @@ class SaveManager:
         self._ram_data = ram_data
         self._saves: List[pathlib.Path] = []
 
-    def save_from_ram(self, file_path: str):
+    def ram_to_disk(self, file_path: str):
         map_save_data = MapSaveData()
         for tile in self._ram_data.tiles:
             if tile.enabled:
@@ -149,10 +153,11 @@ class SaveManager:
         file = open(file_path, "w")
         yaml.dump(map_save_data.to_dict(), file, Dumper=SafeDumper)
 
-    def load_to_ram(self, file_path: str):
+    def disk_to_ram(self, file_path: str):
         file = open(file_path, "r")
         raw_map_save_data = yaml.load(file, Loader=SafeLoader)
         map_save_data = MapSaveData(state=raw_map_save_data)
+
         self._ram_data.tiles = map_save_data.tiles
         self._ram_data.x_start = map_save_data.x_start
         self._ram_data.x_end = map_save_data.x_end

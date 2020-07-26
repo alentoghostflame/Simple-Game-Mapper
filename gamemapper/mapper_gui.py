@@ -107,7 +107,7 @@ class TopMenuBar:
 
         if response == Gtk.ResponseType.OK:
             file_path = dialog.get_filename()
-            self.saves.save_from_ram(file_path)
+            self.saves.ram_to_disk(file_path)
         elif response == Gtk.ResponseType.CANCEL:
             print("CANCEL PRESSED")
 
@@ -128,7 +128,7 @@ class TopMenuBar:
 
         if response == Gtk.ResponseType.OK:
             file_path = dialog.get_filename()
-            self.saves.load_to_ram(file_path)
+            self.saves.disk_to_ram(file_path)
             self._map_load_from_ram_func()
         elif response == Gtk.ResponseType.CANCEL:
             print("CANCEL PRESSED")
@@ -140,11 +140,6 @@ class MapContainer:
     def __init__(self, config: ConfigData, ram_data: RamData):
         self.config: ConfigData = config
         self.ram_data: RamData = ram_data
-
-        # self.x_start = 0
-        # self.x_end = 0
-        # self.y_start = 0
-        # self.y_end = 0
 
         self.main_grid = Gtk.Grid(valign="fill", halign="fill")
         self.scrolled_map = Gtk.ScrolledWindow(hscrollbar_policy=Gtk.PolicyType.AUTOMATIC,
@@ -180,10 +175,6 @@ class MapContainer:
                              self.config.default_y_end)
 
     def initialize_grid(self, x_start=0, x_end=0, y_start=0, y_end=0):
-        # if self.tile_grid.get_children():
-        #     self.ram_data.tiles.clear()
-        #     for button in self.tile_grid.get_children():
-        #         self.tile_grid.remove(button)
         self.clear_layout()
 
         self.ram_data.x_start = x_start
@@ -205,6 +196,7 @@ class MapContainer:
                     self.add_tile_button(x, y, self.ram_data.tiles[save_tile_index])
                 else:
                     self.add_tile_button(x, y)
+
         self.tile_grid.show_all()
 
     def reset_layout(self, button):
@@ -219,10 +211,10 @@ class MapContainer:
 
     def add_tile_button(self, x, y, tile_data: TileData = None):
         if tile_data:
-            tile_button = TileButton(tile_data)
+            tile_button = TileButton(tile_data, size=self.config.square_size)
         else:
             self.ram_data.tiles.append(TileData(x, y))
-            tile_button = TileButton(self.ram_data.tiles[-1])
+            tile_button = TileButton(self.ram_data.tiles[-1], size=self.config.square_size)
 
         self.tile_grid.attach(tile_button.button, x, y, 1, 1)
 
