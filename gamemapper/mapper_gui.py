@@ -53,6 +53,7 @@ class MainLayout:
         self.grid.attach(self.top_bar.toolbar, 0, 0, 1, 1)
 
         self.top_bar.set_map_reset_func(self.map_container.reset_layout)
+        self.top_bar.set_map_load_from_ram_func(self.map_container.initialize_from_ram)
         self.top_bar.setup()
         self.map_container.setup()
 
@@ -65,6 +66,8 @@ class TopMenuBar:
         self.save_button = Gtk.ToolButton()
         self.open_button = Gtk.ToolButton()
 
+        self._map_load_from_ram_func = None
+
     def setup(self):
         self.new_button.set_icon_name(Gtk.STOCK_NEW)
         self.new_button.set_label("New")
@@ -75,6 +78,7 @@ class TopMenuBar:
 
         self.open_button.set_icon_name(Gtk.STOCK_OPEN)
         self.open_button.set_label("Load")
+        self.open_button.connect("clicked", self.on_load_pressed)
 
         self.toolbar.insert(self.new_button, 0)
         self.toolbar.insert(self.save_button, 1)
@@ -82,6 +86,9 @@ class TopMenuBar:
 
     def set_map_reset_func(self, function):
         self.new_button.connect("clicked", function)
+
+    def set_map_load_from_ram_func(self, function):
+        self._map_load_from_ram_func = function
 
     def on_save_pressed(self, button):
         dialog = Gtk.FileChooserDialog(title="Save to...", action=Gtk.FileChooserAction.SAVE)
@@ -106,16 +113,38 @@ class TopMenuBar:
 
         dialog.destroy()
 
+    def on_load_pressed(self, button):
+        dialog = Gtk.FileChooserDialog(title="Save from...", action=Gtk.FileChooserAction.OPEN)
+        dialog.set_current_folder("saves")
+        dialog.add_button(Gtk.STOCK_CANCEL, Gtk.ResponseType.CANCEL)
+        dialog.add_button(Gtk.STOCK_OPEN, Gtk.ResponseType.OK)
+
+        yaml_filter = Gtk.FileFilter()
+        yaml_filter.set_name("YAML file")
+        yaml_filter.add_mime_type("text/yaml")
+        dialog.add_filter(yaml_filter)
+
+        response = dialog.run()
+
+        if response == Gtk.ResponseType.OK:
+            file_path = dialog.get_filename()
+            self.saves.load_to_ram(file_path)
+            self._map_load_from_ram_func()
+        elif response == Gtk.ResponseType.CANCEL:
+            print("CANCEL PRESSED")
+
+        dialog.destroy()
+
 
 class MapContainer:
     def __init__(self, config: ConfigData, ram_data: RamData):
         self.config: ConfigData = config
         self.ram_data: RamData = ram_data
 
-        self.x_start = 0
-        self.x_end = 0
-        self.y_start = 0
-        self.y_end = 0
+        # self.x_start = 0
+        # self.x_end = 0
+        # self.y_start = 0
+        # self.y_end = 0
 
         self.main_grid = Gtk.Grid(valign="fill", halign="fill")
         self.scrolled_map = Gtk.ScrolledWindow(hscrollbar_policy=Gtk.PolicyType.AUTOMATIC,
@@ -151,50 +180,74 @@ class MapContainer:
                              self.config.default_y_end)
 
     def initialize_grid(self, x_start=0, x_end=0, y_start=0, y_end=0):
-        if self.tile_grid.get_children():
-            self.ram_data.tiles.clear()
-            for button in self.tile_grid.get_children():
-                self.tile_grid.remove(button)
+        # if self.tile_grid.get_children():
+        #     self.ram_data.tiles.clear()
+        #     for button in self.tile_grid.get_children():
+        #         self.tile_grid.remove(button)
+        self.clear_layout()
 
-        self.x_start = x_start
-        self.x_end = x_end
-        self.y_start = y_start
-        self.y_end = y_end
+        self.ram_data.x_start = x_start
+        self.ram_data.x_end = x_end
+        self.ram_data.y_start = y_start
+        self.ram_data.y_end = y_end
         for x in range(x_start, x_end + 1):
             for y in range(y_start, y_end + 1):
                 self.add_tile_button(x, y)
         self.tile_grid.show_all()
 
+    def initialize_from_ram(self):
+        self.clear_layout(clear_ram=False)
+
+        for x in range(self.ram_data.x_start, self.ram_data.x_end + 1):
+            for y in range(self.ram_data.y_start, self.ram_data.y_end + 1):
+                if f"{x}:{y}" in self.ram_data.save_tile_reference:
+                    save_tile_index = self.ram_data.save_tile_reference[f"{x}:{y}"]
+                    self.add_tile_button(x, y, self.ram_data.tiles[save_tile_index])
+                else:
+                    self.add_tile_button(x, y)
+        self.tile_grid.show_all()
+
     def reset_layout(self, button):
         self.initialize_default_grid()
 
-    def add_tile_button(self, x, y):
-        self.ram_data.tiles.append(TileData(x, y))
-        tile_button = TileButton(self.ram_data.tiles[-1])
+    def clear_layout(self, clear_ram=True):
+        if clear_ram:
+            self.ram_data.tiles.clear()
+        if self.tile_grid.get_children():
+            for button in self.tile_grid.get_children():
+                self.tile_grid.remove(button)
+
+    def add_tile_button(self, x, y, tile_data: TileData = None):
+        if tile_data:
+            tile_button = TileButton(tile_data)
+        else:
+            self.ram_data.tiles.append(TileData(x, y))
+            tile_button = TileButton(self.ram_data.tiles[-1])
+
         self.tile_grid.attach(tile_button.button, x, y, 1, 1)
 
     def add_top(self, button):
-        self.y_start -= 1
-        for x in range(self.x_start, self.x_end + 1):
-            self.add_tile_button(x, self.y_start)
+        self.ram_data.y_start -= 1
+        for x in range(self.ram_data.x_start, self.ram_data.x_end + 1):
+            self.add_tile_button(x, self.ram_data.y_start)
         self.tile_grid.show_all()
 
     def add_bottom(self, button):
-        self.y_end += 1
-        for x in range(self.x_start, self.x_end + 1):
-            self.add_tile_button(x, self.y_end)
+        self.ram_data.y_end += 1
+        for x in range(self.ram_data.x_start, self.ram_data.x_end + 1):
+            self.add_tile_button(x, self.ram_data.y_end)
         self.tile_grid.show_all()
 
     def add_left(self, button):
-        self.x_start -= 1
-        for y in range(self.y_start, self.y_end + 1):
-            self.add_tile_button(self.x_start, y)
+        self.ram_data.x_start -= 1
+        for y in range(self.ram_data.y_start, self.ram_data.y_end + 1):
+            self.add_tile_button(self.ram_data.x_start, y)
         self.tile_grid.show_all()
 
     def add_right(self, button):
-        self.x_end += 1
-        for y in range(self.y_start, self.y_end + 1):
-            self.add_tile_button(self.x_end, y)
+        self.ram_data.x_end += 1
+        for y in range(self.ram_data.y_start, self.ram_data.y_end + 1):
+            self.add_tile_button(self.ram_data.x_end, y)
         self.tile_grid.show_all()
 
 
@@ -212,6 +265,8 @@ class TileButton:
         self.button.get_style_context().add_class("map_button")
         self.button.set_size_request(self._preferred_size, self._preferred_size)
         self.button.connect("toggled", self.on_toggle)
+        if self.tile_data.enabled:
+            self.button.set_active(True)
 
     def on_toggle(self, button):
         self.tile_data.enabled = self.button.get_active()

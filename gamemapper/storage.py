@@ -1,11 +1,10 @@
-from typing import List
+from typing import List, Dict
 import pathlib
 import yaml
 try:
     from yaml import CSafeLoader as SafeLoader, CSafeDumper as SafeDumper
 except ImportError:
     from yaml import SafeLoader, SafeDumper
-import os
 
 
 class BaseConfig:
@@ -49,6 +48,12 @@ class BaseConfig:
 class RamData:
     def __init__(self):
         self.tiles: List[TileData] = []
+        self.x_start: int = 0
+        self.x_end: int = 0
+        self.y_start: int = 0
+        self.y_end: int = 0
+
+        self.save_tile_reference: Dict[str] = dict()
 
 
 class ConfigData(BaseConfig, name="map_config"):
@@ -143,6 +148,20 @@ class SaveManager:
 
         file = open(file_path, "w")
         yaml.dump(map_save_data.to_dict(), file, Dumper=SafeDumper)
+
+    def load_to_ram(self, file_path: str):
+        file = open(file_path, "r")
+        raw_map_save_data = yaml.load(file, Loader=SafeLoader)
+        map_save_data = MapSaveData(state=raw_map_save_data)
+        self._ram_data.tiles = map_save_data.tiles
+        self._ram_data.x_start = map_save_data.x_start
+        self._ram_data.x_end = map_save_data.x_end
+        self._ram_data.y_start = map_save_data.y_start
+        self._ram_data.y_end = map_save_data.y_end
+
+        for i in range(len(self._ram_data.tiles)):
+            tile = self._ram_data.tiles[i]
+            self._ram_data.save_tile_reference[f"{tile.x}:{tile.y}"] = i
 
     def load(self):
         self.scan_for_saves()
