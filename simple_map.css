@@ -4,3 +4,15 @@
     font-family: "Ubuntu Mono", "times new roman";
     border-radius: 0px;
 }
+.map_expander_button {
+    font-size: 100%;
+    padding: 2px;
+    font-family: "Ubuntu Mono", "times new roman";
+}
+.sidebar_symbol_label {
+    padding: 5px;
+}
+.map_holder {
+    border: 8px solid @unfocused_borders;
+    border-radius: 5px;
+}

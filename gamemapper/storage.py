@@ -1,4 +1,4 @@
-from typing import List, Dict
+from typing import List, Dict, Set, Iterable
 import pathlib
 import yaml
 try:
@@ -47,13 +47,15 @@ class BaseConfig:
 
 class RamData:
     def __init__(self):
-        self.tiles: List[TileData] = []
+        self.tiles: List[TileData] = list()
+        self.symbols: Dict[str, SymbolData] = dict()
         self.x_start: int = 0
         self.x_end: int = 0
         self.y_start: int = 0
         self.y_end: int = 0
 
         self.save_tile_reference: Dict[str] = dict()
+        self.held_buttons: Set[str] = set()
 
 
 class ConfigData(BaseConfig, name="map_config"):
@@ -70,27 +72,59 @@ class TileData:
     def __init__(self, x: int = 0, y: int = 0, enabled: bool = False, state: dict = None):
         self.x: int = x
         self.y: int = y
+        self.tags: Set[str] = set()
         self.enabled: bool = enabled
 
         if state:
             self.from_dict(state)
 
+    def apply_letter_tags(self, tags: Iterable):
+        for tag in tags:
+            if tag in self.tags:
+                self.tags.remove(tag)
+            else:
+                self.tags.add(tag)
+
     def from_dict(self, state: dict):
         self.x = state["x"]
         self.y = state["y"]
         self.enabled = state["enabled"]
+        self.tags = state["tags"]
 
     def to_dict(self) -> dict:
-        return {"x": self.x, "y": self.y, "enabled": self.enabled}
+        return {"x": self.x, "y": self.y, "enabled": self.enabled, "tags": self.tags}
+
+
+class SymbolData:
+    def __init__(self, character: str = "a", state: dict = None):
+        self.character: str = character
+        self.default_value: str = ""
+        self._get_value_func = None
+
+        if state:
+            self.from_dict(state)
+
+    def to_dict(self) -> dict:
+        return {"value": self.get_value()}
+
+    def from_dict(self, state: dict):
+        self.default_value = state["value"]
+
+    def register_get_func(self, function):
+        self._get_value_func = function
+
+    def get_value(self) -> str:
+        return self._get_value_func()
 
 
 class MapSaveData:
     def __init__(self, state: dict = None):
-        self.tiles: List[TileData] = []
+        self.tiles: List[TileData] = list()
         self.x_start: int = 0
         self.x_end: int = 0
         self.y_start: int = 0
         self.y_end: int = 0
+        self.symbols: Dict[str, SymbolData] = dict()
 
         if state:
             self.from_dict(state)
@@ -98,12 +132,13 @@ class MapSaveData:
     def verify_state(self, state: dict) -> bool:
         try:
             assert isinstance(state.get("tiles", None), list)
+            assert isinstance(state.get("symbols", None), dict)
             assert isinstance(state.get("x_start", None), int)
             assert isinstance(state.get("x_end", None), int)
             assert isinstance(state.get("y_start", None), int)
             assert isinstance(state.get("y_end", None), int)
-            assert state.get("x_start", 1) < state.get("x_end", 0)
-            assert state.get("y_start", 1) < state.get("y_end", 0)
+            assert state.get("x_start", 1) <= state.get("x_end", 0)
+            assert state.get("y_start", 1) <= state.get("y_end", 0)
             return True
         except AssertionError:
             return False
@@ -116,17 +151,25 @@ class MapSaveData:
             self.x_end = state["x_end"]
             self.y_start = state["y_start"]
             self.y_end = state["y_end"]
+            for symbol_char in state["symbols"]:
+                self.symbols[symbol_char] = SymbolData(symbol_char, state=state["symbols"][symbol_char])
             return True
         else:
+            print("FAILING VERIFICATION")
             return False
 
     def to_dict(self) -> dict:
         output_dict = {"x_start": self.x_start, "x_end": self.x_end, "y_start": self.y_start, "y_end": self.y_end}
 
-        raw_tile_list = []
+        raw_tile_list = list()
         for tile in self.tiles:
             raw_tile_list.append(tile.to_dict())
         output_dict["tiles"] = raw_tile_list
+
+        raw_symbol_dict = dict()
+        for symbol_char in self.symbols:
+            raw_symbol_dict[symbol_char] = self.symbols[symbol_char].to_dict()
+        output_dict["symbols"] = raw_symbol_dict
 
         return output_dict
 
@@ -134,7 +177,7 @@ class MapSaveData:
 class SaveManager:
     def __init__(self, ram_data: RamData):
         self._ram_data = ram_data
-        self._saves: List[pathlib.Path] = []
+        # self._saves: List[pathlib.Path] = []
 
     def ram_to_disk(self, file_path: str):
         map_save_data = MapSaveData()
@@ -150,6 +193,11 @@ class SaveManager:
                 elif tile.y > map_save_data.y_end:
                     map_save_data.y_end = tile.y
 
+        for symbol_char in self._ram_data.symbols:
+            symbol_data = self._ram_data.symbols[symbol_char]
+            if symbol_data.get_value():
+                map_save_data.symbols[symbol_char] = symbol_data
+
         file = open(file_path, "w")
         yaml.dump(map_save_data.to_dict(), file, Dumper=SafeDumper)
 
@@ -163,17 +211,18 @@ class SaveManager:
         self._ram_data.x_end = map_save_data.x_end
         self._ram_data.y_start = map_save_data.y_start
         self._ram_data.y_end = map_save_data.y_end
+        self._ram_data.symbols = map_save_data.symbols
 
         for i in range(len(self._ram_data.tiles)):
             tile = self._ram_data.tiles[i]
             self._ram_data.save_tile_reference[f"{tile.x}:{tile.y}"] = i
 
-    def load(self):
-        self.scan_for_saves()
-
-    def scan_for_saves(self):
-        save_path = pathlib.Path("saves")
-        save_path.mkdir(exist_ok=True)
-        for file in save_path.iterdir():
-            if file.is_file():
-                self._saves.append(file)
+    # def load(self):
+    #     self.scan_for_saves()
+    #
+    # def scan_for_saves(self):
+    #     save_path = pathlib.Path("saves")
+    #     save_path.mkdir(exist_ok=True)
+    #     for file in save_path.iterdir():
+    #         if file.is_file():
+    #             self._saves.append(file)
