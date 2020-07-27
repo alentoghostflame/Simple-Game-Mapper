@@ -415,6 +415,8 @@ class TileButton:
         #   If held buttons:
         #     Apply tags, update tooltip, toggle on.
 
+        # If the currently selected texture is empty AND the current texture exists and is not empty:
+
         return_value = False
 
         if self.button.get_active():
@@ -427,12 +429,16 @@ class TileButton:
                 self._tile_data.texture = self._ram_data.selected_texture
                 self._textures.set_background(button, self._tile_data.texture)
                 return_value = True
+            elif self._ram_data.selected_texture == EMPTY_TEXTURE and (self._tile_data.texture and self._tile_data.texture != EMPTY_TEXTURE):
+                self._tile_data.texture = self._ram_data.selected_texture
+                self._textures.set_background(button, self._tile_data.texture)
+                return_value = True
         else:
             if self._ram_data.held_buttons:
                 self._tile_data.apply_letter_tags(self._ram_data.held_buttons)
                 self.update_tags()
                 self.update_tooltip()
-            if self._ram_data.selected_texture != EMPTY_TEXTURE:
+            elif self._ram_data.selected_texture != EMPTY_TEXTURE:
                 self._tile_data.texture = self._ram_data.selected_texture
                 self._textures.set_background(button, self._tile_data.texture)
         return return_value
@@ -524,8 +530,11 @@ class OptionSideBar:
         symbol_widget.add_to_grid(self.symbol_grid, row)
 
     def initialize_textures(self):
-        for texture_name in self._ram_data.textures:
-            self.texture_list.add(TextureWidget(self._config, self._textures, self._ram_data.textures[texture_name]).add_me)
+        texture_name_list = list(self._ram_data.textures.keys())
+        texture_name_list.sort()
+        for texture_name in texture_name_list:
+            self.texture_list.add(TextureWidget(self._config, self._textures,
+                                                self._ram_data.textures[texture_name]).add_me)
 
     def on_texture_row_selected(self, listbox: Gtk.ListBox, row: Gtk.ListBoxRow):
         for child in row.get_child():
@@ -564,8 +573,8 @@ class TextureWidget:
         self._textures = textures
         self._texture_data = texture_data
         self.add_me = Gtk.Grid()
-        self._image = Gtk.Image(halign="end", icon_size=self._config.square_size, pixel_size=self._config.square_size)
-        self._text = Gtk.Label(label=f"{texture_data.name}  ")
+        self._image = Gtk.Image(halign="start", icon_size=self._config.square_size, pixel_size=self._config.square_size)
+        self._text = Gtk.Label(label=f"  {texture_data.name}")
         if setup:
             self.setup()
 
@@ -580,6 +589,6 @@ class TextureWidget:
             self._image.set_from_icon_name(Gtk.STOCK_MISSING_IMAGE, Gtk.IconSize.DIALOG)
         # self._image.set_pixel_size(self._config.square_size)
         # self._image.size
-        self.add_me.attach(self._text, 0, 0, 1, 1)
-        self.add_me.attach(self._image, 1, 0, 1, 1)
+        self.add_me.attach(self._text, 1, 0, 1, 1)
+        self.add_me.attach(self._image, 0, 0, 1, 1)
 
