@@ -425,7 +425,7 @@ class TileButton:
                 self.update_tags()
                 self.update_tooltip()
                 return_value = True
-            if self._ram_data.selected_texture != EMPTY_TEXTURE:
+            elif self._ram_data.selected_texture != EMPTY_TEXTURE:
                 self._tile_data.texture = self._ram_data.selected_texture
                 self._textures.set_background(button, self._tile_data.texture)
                 return_value = True
