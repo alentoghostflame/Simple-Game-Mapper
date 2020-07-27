@@ -4,7 +4,7 @@ import string
 # import cairo
 import gi
 gi.require_version("Gtk", "3.0")
-from gi.repository import Gtk, Gdk
+from gi.repository import Gtk, Gdk, GdkPixbuf
 
 
 EMPTY_TEXTURE = "Empty"
@@ -134,7 +134,7 @@ class MainLayout:
         self.grid = Gtk.Grid(valign="fill", halign="fill")
         self.top_bar = TopMenuBar(self.saves)
         self.map_container = MapContainer(self.config, self.ram_data, self._textures)
-        self.side_bar = OptionSideBar(self.ram_data, self._textures)
+        self.side_bar = OptionSideBar(self.config, self.ram_data, self._textures)
 
     def setup(self):
         self.grid.attach(self.map_container.main_grid, 0, 1, 1, 1)
@@ -471,7 +471,8 @@ class TileButton:
 
 
 class OptionSideBar:
-    def __init__(self, ram_data: RamData, textures: TextureManager):
+    def __init__(self, config: ConfigData, ram_data: RamData, textures: TextureManager):
+        self._config: ConfigData = config
         self._ram_data: RamData = ram_data
         self._textures: TextureManager = textures
         self.notebook = Gtk.Notebook()
@@ -524,7 +525,7 @@ class OptionSideBar:
 
     def initialize_textures(self):
         for texture_name in self._ram_data.textures:
-            self.texture_list.add(TextureWidget(self._textures, self._ram_data.textures[texture_name]).add_me)
+            self.texture_list.add(TextureWidget(self._config, self._textures, self._ram_data.textures[texture_name]).add_me)
 
     def on_texture_row_selected(self, listbox: Gtk.ListBox, row: Gtk.ListBoxRow):
         for child in row.get_child():
@@ -558,17 +559,27 @@ class SymbolWidget:
 
 
 class TextureWidget:
-    def __init__(self, textures: TextureManager, texture_data: TextureData, setup=True):
+    def __init__(self, config: ConfigData, textures: TextureManager, texture_data: TextureData, setup=True):
+        self._config = config
         self._textures = textures
         self._texture_data = texture_data
         self.add_me = Gtk.Grid()
-        self._image = Gtk.Image(halign="end")
+        self._image = Gtk.Image(halign="end", icon_size=self._config.square_size, pixel_size=self._config.square_size)
         self._text = Gtk.Label(label=f"{texture_data.name}  ")
         if setup:
             self.setup()
 
     def setup(self):
-        self._image.set_from_file(self._texture_data.path)
+        if pathlib.Path(self._texture_data.path).is_file():
+            # noinspection PyArgumentList,PyCallByClass
+            pixbuf = GdkPixbuf.Pixbuf.new_from_file_at_size(self._texture_data.path, self._config.square_size,
+                                                            self._config.square_size)
+        # self._image.set_from_file(self._texture_data.path)
+            self._image.set_from_pixbuf(pixbuf)
+        else:
+            self._image.set_from_icon_name(Gtk.STOCK_MISSING_IMAGE, Gtk.IconSize.DIALOG)
+        # self._image.set_pixel_size(self._config.square_size)
+        # self._image.size
         self.add_me.attach(self._text, 0, 0, 1, 1)
         self.add_me.attach(self._image, 1, 0, 1, 1)
 
