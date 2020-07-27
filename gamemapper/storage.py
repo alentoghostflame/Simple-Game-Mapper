@@ -60,6 +60,9 @@ class RamData:
         self.held_buttons: Set[str] = set()
         self.selected_texture: str = "Empty"
 
+        self.last_save_folder: str = ""
+        self.last_save_name: str = ""
+
 
 class ConfigData(BaseConfig, name="map_config"):
     def __init__(self):

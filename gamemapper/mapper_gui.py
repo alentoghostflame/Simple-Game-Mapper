@@ -132,7 +132,7 @@ class MainLayout:
         self._textures: TextureManager = textures
 
         self.grid = Gtk.Grid(valign="fill", halign="fill")
-        self.top_bar = TopMenuBar(self.saves)
+        self.top_bar = TopMenuBar(self.ram_data, self.saves)
         self.map_container = MapContainer(self.config, self.ram_data, self._textures)
         self.side_bar = OptionSideBar(self.config, self.ram_data, self._textures)
 
@@ -150,7 +150,8 @@ class MainLayout:
 
 
 class TopMenuBar:
-    def __init__(self, saves: SaveManager):
+    def __init__(self, ram_data: RamData, saves: SaveManager):
+        self._ram_data = ram_data
         self.saves = saves
         self.toolbar = Gtk.Toolbar()
         self.new_button = Gtk.ToolButton()
@@ -196,8 +197,14 @@ class TopMenuBar:
     def on_save_pressed(self, button):
         dialog = Gtk.FileChooserDialog(title="Save to...", action=Gtk.FileChooserAction.SAVE)
         dialog.set_do_overwrite_confirmation(True)
-        dialog.set_current_folder("saves")
-        dialog.set_current_name("map_save.yaml")
+        if self._ram_data.last_save_folder:
+            dialog.set_current_folder(self._ram_data.last_save_folder)
+        else:
+            dialog.set_current_folder("saves")
+        if self._ram_data.last_save_name:
+            dialog.set_current_name(self._ram_data.last_save_name)
+        else:
+            dialog.set_current_name("map_save.yaml")
         dialog.add_button(Gtk.STOCK_CANCEL, Gtk.ResponseType.CANCEL)
         dialog.add_button(Gtk.STOCK_SAVE, Gtk.ResponseType.OK)
 
@@ -205,6 +212,11 @@ class TopMenuBar:
         response = dialog.run()
 
         if response == Gtk.ResponseType.OK:
+            split_file_path = dialog.get_filename().split("/")
+            self._ram_data.last_save_folder = "/".join(split_file_path[:-1])
+            self._ram_data.last_save_name = split_file_path[-1]
+
+            print(f"{self._ram_data.last_save_folder}   {self._ram_data.last_save_name}")
             file_path = dialog.get_filename()
             self.saves.ram_to_disk(file_path)
         elif response == Gtk.ResponseType.CANCEL:
@@ -213,8 +225,12 @@ class TopMenuBar:
         dialog.destroy()
 
     def on_load_pressed(self, button):
-        dialog = Gtk.FileChooserDialog(title="Save from...", action=Gtk.FileChooserAction.OPEN)
-        dialog.set_current_folder("saves")
+        dialog = Gtk.FileChooserDialog(title="Load from...", action=Gtk.FileChooserAction.OPEN)
+        # dialog.set_current_folder("saves")
+        if self._ram_data.last_save_folder:
+            dialog.set_current_folder(self._ram_data.last_save_folder)
+        else:
+            dialog.set_current_folder("saves")
         dialog.add_button(Gtk.STOCK_CANCEL, Gtk.ResponseType.CANCEL)
         dialog.add_button(Gtk.STOCK_OPEN, Gtk.ResponseType.OK)
 
@@ -222,6 +238,10 @@ class TopMenuBar:
         response = dialog.run()
 
         if response == Gtk.ResponseType.OK:
+            split_file_path = dialog.get_filename().split("/")
+            self._ram_data.last_save_folder = "/".join(split_file_path[:-1])
+            self._ram_data.last_save_name = split_file_path[-1]
+
             file_path = dialog.get_filename()
             self.saves.disk_to_ram(file_path)
             self._symbol_load_func()
