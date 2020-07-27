@@ -36,7 +36,7 @@ class TextureManager:
 
     def _initialize_empty_background(self):
         empty_texture = TextureData(EMPTY_TEXTURE, EMPTY_TEXTURE.lower())
-        empty_texture.css = f".{empty_texture.class_name} {{ background-image: none; }}"
+        empty_texture.css = f".{empty_texture.class_name} {{ }}"
         self._ram_data.textures[empty_texture.name] = empty_texture
 
     def _process_file(self, file: pathlib.Path):
