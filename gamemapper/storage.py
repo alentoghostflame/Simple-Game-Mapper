@@ -7,6 +7,9 @@ except ImportError:
     from yaml import SafeLoader, SafeDumper
 
 
+EMPTY_TEXTURE = "Empty"
+
+
 BASE_TEXTURE_CSS = """
 .{} {{ 
      background-color: @unfocused_borders;
@@ -70,7 +73,7 @@ class RamData:
 
         self.save_tile_reference: Dict[str] = dict()
         self.held_buttons: Set[str] = set()
-        self.selected_texture: str = "Empty"
+        self.selected_texture: str = EMPTY_TEXTURE
 
         self.last_save_folder: str = ""
         self.last_save_name: str = ""
@@ -157,24 +160,8 @@ class MapSaveData:
         if state:
             self.from_dict(state)
 
-    # noinspection PyMethodMayBeStatic
-    def verify_state(self, state: dict) -> bool:
-        try:
-            assert isinstance(state.get("tiles", list()), list)
-            assert isinstance(state.get("symbols", dict()), dict)
-            # assert isinstance(state.get("textures", dict()), dict)
-            assert isinstance(state.get("x_start", 0), int)
-            assert isinstance(state.get("x_end", 0), int)
-            assert isinstance(state.get("y_start", 0), int)
-            assert isinstance(state.get("y_end", 0), int)
-            assert state.get("x_start", 0) <= state.get("x_end", 0)
-            assert state.get("y_start", 0) <= state.get("y_end", 0)
-            return True
-        except AssertionError:
-            return False
-
     def from_dict(self, state: dict) -> bool:
-        if self.verify_state(state):
+        if verify_save_state(state):
             for raw_tile_data in state.get("tiles", list()):
                 self.tiles.append(TileData(state=raw_tile_data))
             self.x_start = state.get("x_start", 0)
@@ -202,6 +189,21 @@ class MapSaveData:
         output_dict["symbols"] = raw_symbol_dict
 
         return output_dict
+
+
+def verify_save_state(state: dict) -> bool:
+    try:
+        assert isinstance(state.get("tiles", list()), list)
+        assert isinstance(state.get("symbols", dict()), dict)
+        assert isinstance(state.get("x_start", 0), int)
+        assert isinstance(state.get("x_end", 0), int)
+        assert isinstance(state.get("y_start", 0), int)
+        assert isinstance(state.get("y_end", 0), int)
+        assert state.get("x_start", 0) <= state.get("x_end", 0)
+        assert state.get("y_start", 0) <= state.get("y_end", 0)
+        return True
+    except AssertionError:
+        return False
 
 
 class SaveManager:
