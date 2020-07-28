@@ -150,8 +150,18 @@ class TopMenuBar:
         self._symbol_reset_func = symbol_reset_func
 
     def reset_ui(self, button):
-        self._map_reset_func()
-        self._symbol_reset_func()
+        dialog = Gtk.Dialog(Gtk.DialogFlags.MODAL, title="Reset Map?")
+        dialog.add_button(Gtk.STOCK_YES, Gtk.ResponseType.OK)
+        dialog.add_button(Gtk.STOCK_NO, Gtk.ResponseType.CANCEL)
+
+        response = dialog.run()
+
+        if response == Gtk.ResponseType.OK:
+            self._map_reset_func()
+            self._symbol_reset_func()
+        else:
+            pass
+        dialog.destroy()
 
     def set_load_from_ram_functions(self, map_load_func, symbol_load_func):
         self._map_load_func = map_load_func

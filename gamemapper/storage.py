@@ -1,6 +1,5 @@
 from typing import List, Dict, Set, Iterable
 import pathlib
-import cairo
 import yaml
 try:
     from yaml import CSafeLoader as SafeLoader, CSafeDumper as SafeDumper
@@ -93,13 +92,9 @@ class TileData:
                 self.tags.add(tag)
 
     def from_dict(self, state: dict):
-        # self.x = state["x"]
         self.x = state.get("x", 0)
-        # self.y = state["y"]
         self.y = state.get("y", 0)
-        # self.enabled = state["enabled"]
         self.enabled = state.get("enabled", True)
-        # self.tags = state["tags"]
         self.tags = state.get("tags", set())
         self.texture = state.get("texture", "")
 
@@ -147,7 +142,6 @@ class MapSaveData:
         self.y_start: int = 0
         self.y_end: int = 0
         self.symbols: Dict[str, SymbolData] = dict()
-        # self.textures: Dict[str, TextureData] = dict()
 
         if state:
             self.from_dict(state)
@@ -178,9 +172,6 @@ class MapSaveData:
             self.y_end = state["y_end"]
             for symbol_char in state["symbols"]:
                 self.symbols[symbol_char] = SymbolData(symbol_char, state=state["symbols"][symbol_char])
-            # for texture_name in state["textures"]:
-            # for texture_name in state.get("textures", dict()):
-            #     self.textures[texture_name] = TextureData(state=state["textures"][texture_name])
             return True
         else:
             print("FAILING VERIFICATION")
@@ -199,18 +190,12 @@ class MapSaveData:
             raw_symbol_dict[symbol_char] = self.symbols[symbol_char].to_dict()
         output_dict["symbols"] = raw_symbol_dict
 
-        # raw_texture_dict = dict()
-        # for texture_name in self.textures:
-        #     raw_texture_dict[texture_name] = self.textures[texture_name].to_dict()
-        # output_dict["textures"] = raw_texture_dict
-
         return output_dict
 
 
 class SaveManager:
     def __init__(self, ram_data: RamData):
         self._ram_data = ram_data
-        # self._saves: List[pathlib.Path] = []
 
     def ram_to_disk(self, file_path: str):
         map_save_data = MapSaveData()
@@ -249,16 +234,3 @@ class SaveManager:
         for i in range(len(self._ram_data.tiles)):
             tile = self._ram_data.tiles[i]
             self._ram_data.save_tile_reference[f"{tile.x}:{tile.y}"] = i
-
-    # def load(self):
-    #     self.scan_for_saves()
-    #
-    # def scan_for_saves(self):
-    #     save_path = pathlib.Path("saves")
-    #     save_path.mkdir(exist_ok=True)
-    #     for file in save_path.iterdir():
-    #         if file.is_file():
-    #             self._saves.append(file)
-
-
-
