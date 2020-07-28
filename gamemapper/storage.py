@@ -51,6 +51,7 @@ class BaseConfig:
             state = yaml.safe_load(file)
             file.close()
             self._from_dict(state)
+            # noinspection PyAttributeOutsideInit
             self._from_disk = True
 
     def from_disk(self) -> bool:

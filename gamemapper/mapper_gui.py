@@ -149,6 +149,7 @@ class TopMenuBar:
         self._map_reset_func = map_reset_func
         self._symbol_reset_func = symbol_reset_func
 
+    # noinspection PyUnusedLocal
     def reset_ui(self, button):
         dialog = Gtk.Dialog(Gtk.DialogFlags.MODAL, title="Reset Map?")
         dialog.add_button(Gtk.STOCK_YES, Gtk.ResponseType.OK)
@@ -167,6 +168,7 @@ class TopMenuBar:
         self._map_load_func = map_load_func
         self._symbol_load_func = symbol_load_func
 
+    # noinspection PyUnusedLocal
     def on_save_pressed(self, button):
         dialog = Gtk.FileChooserDialog(title="Save to...", action=Gtk.FileChooserAction.SAVE)
         dialog.set_do_overwrite_confirmation(True)
@@ -196,6 +198,7 @@ class TopMenuBar:
 
         dialog.destroy()
 
+    # noinspection PyUnusedLocal
     def on_load_pressed(self, button):
         dialog = Gtk.FileChooserDialog(title="Load from...", action=Gtk.FileChooserAction.OPEN)
         if self._ram_data.last_save_folder:
@@ -222,6 +225,7 @@ class TopMenuBar:
 
         dialog.destroy()
 
+    # noinspection PyMethodMayBeStatic
     def add_filters(self, dialog: Gtk.FileChooserDialog):
         yaml_filter = Gtk.FileFilter()
         yaml_filter.set_name("YAML file")
@@ -322,30 +326,35 @@ class MapContainer:
 
         self.tile_grid.attach(tile_button.button, x, y, 1, 1)
 
+    # noinspection PyUnusedLocal
     def add_top(self, button):
         self.ram_data.y_start -= 1
         for x in range(self.ram_data.x_start, self.ram_data.x_end + 1):
             self.add_tile_button(x, self.ram_data.y_start)
         self.tile_grid.show_all()
 
+    # noinspection PyUnusedLocal
     def add_bottom(self, button):
         self.ram_data.y_end += 1
         for x in range(self.ram_data.x_start, self.ram_data.x_end + 1):
             self.add_tile_button(x, self.ram_data.y_end)
         self.tile_grid.show_all()
 
+    # noinspection PyUnusedLocal
     def add_left(self, button):
         self.ram_data.x_start -= 1
         for y in range(self.ram_data.y_start, self.ram_data.y_end + 1):
             self.add_tile_button(self.ram_data.x_start, y)
         self.tile_grid.show_all()
 
+    # noinspection PyUnusedLocal
     def add_right(self, button):
         self.ram_data.x_end += 1
         for y in range(self.ram_data.y_start, self.ram_data.y_end + 1):
             self.add_tile_button(self.ram_data.x_end, y)
         self.tile_grid.show_all()
 
+    # noinspection PyUnusedLocal
     def _on_keypress(self, button, event: Gdk.EventKey):
         if event.get_keyval()[1] in {Gdk.KEY_Up, Gdk.KEY_Down, Gdk.KEY_Left, Gdk.KEY_Right}:
             return False
@@ -356,6 +365,7 @@ class MapContainer:
                 self.ram_data.held_buttons.add(event.string.upper())
         return True
 
+    # noinspection PyUnusedLocal
     def _on_keyrelease(self, button, event: Gdk.EventKey):
         if event.get_keyval()[1] in {Gdk.KEY_Up, Gdk.KEY_Down, Gdk.KEY_Left, Gdk.KEY_Right}:
             return False
@@ -393,6 +403,7 @@ class TileButton:
         if self._tile_data.texture != EMPTY_TEXTURE:
             self._textures.set_background(self.button, self._tile_data.texture)
 
+    # noinspection PyUnusedLocal
     def on_press(self, button: Gtk.ToggleButton, event: Gdk.EventButton) -> bool:
         # If the button is turned on:
         #   If button held down:
@@ -415,7 +426,8 @@ class TileButton:
                 self._tile_data.texture = self._ram_data.selected_texture
                 self._textures.set_background(button, self._tile_data.texture)
                 return_value = True
-            elif self._ram_data.selected_texture == EMPTY_TEXTURE and (self._tile_data.texture and self._tile_data.texture != EMPTY_TEXTURE):
+            elif self._ram_data.selected_texture == EMPTY_TEXTURE and \
+                    (self._tile_data.texture and self._tile_data.texture != EMPTY_TEXTURE):
                 self._tile_data.texture = self._ram_data.selected_texture
                 self._textures.set_background(button, self._tile_data.texture)
                 return_value = True
@@ -521,6 +533,7 @@ class OptionSideBar:
             self.texture_list.add(TextureWidget(self._config, self._textures,
                                                 self._ram_data.textures[texture_name]).add_me)
 
+    # noinspection PyUnusedLocal
     def on_texture_row_selected(self, listbox: Gtk.ListBox, row: Gtk.ListBoxRow):
         for child in row.get_child():
             if isinstance(child, Gtk.Label):
@@ -572,4 +585,3 @@ class TextureWidget:
             self._image.set_from_icon_name(Gtk.STOCK_MISSING_IMAGE, Gtk.IconSize.DIALOG)
         self.add_me.attach(self._text, 1, 0, 1, 1)
         self.add_me.attach(self._image, 0, 0, 1, 1)
-
