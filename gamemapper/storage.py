@@ -7,6 +7,18 @@ except ImportError:
     from yaml import SafeLoader, SafeDumper
 
 
+BASE_TEXTURE_CSS = """
+.{} {{ 
+     background-color: @unfocused_borders;
+     background-image: url("{}");
+     background-repeat: no-repeat;
+     background-size: cover;
+     background-position: center;
+     {}
+}}
+"""
+
+
 class BaseConfig:
     @classmethod
     def __init_subclass__(cls, name: str = "default_config_name", **kwargs):
@@ -129,9 +141,7 @@ class TextureData:
         self.name: str = name
         self.class_name: str = f"texture_{self.name.replace(' ', '')}"
         self.path: str = image_path
-        self.css: str = f'.{self.class_name} {{ background-color: @unfocused_borders; ' \
-                        f'background-image: url("{self.path}"); background-repeat: no-repeat; ' \
-                        f'background-size: cover; background-position: center; {extra_css} }}'
+        self.css: str = BASE_TEXTURE_CSS.format(self.class_name, self.path, extra_css)
 
 
 class MapSaveData:
@@ -164,13 +174,13 @@ class MapSaveData:
 
     def from_dict(self, state: dict) -> bool:
         if self.verify_state(state):
-            for raw_tile_data in state["tiles"]:
+            for raw_tile_data in state.get("tiles", list()):
                 self.tiles.append(TileData(state=raw_tile_data))
-            self.x_start = state["x_start"]
-            self.x_end = state["x_end"]
-            self.y_start = state["y_start"]
-            self.y_end = state["y_end"]
-            for symbol_char in state["symbols"]:
+            self.x_start = state.get("x_start", 0)
+            self.x_end = state.get("x_end", 0)
+            self.y_start = state.get("y_start", 0)
+            self.y_end = state.get("y_end", 0)
+            for symbol_char in state.get("symbols", dict()):
                 self.symbols[symbol_char] = SymbolData(symbol_char, state=state["symbols"][symbol_char])
             return True
         else:
@@ -231,6 +241,7 @@ class SaveManager:
         self._ram_data.y_end = map_save_data.y_end
         self._ram_data.symbols = map_save_data.symbols
 
+        self._ram_data.save_tile_reference.clear()
         for i in range(len(self._ram_data.tiles)):
             tile = self._ram_data.tiles[i]
             self._ram_data.save_tile_reference[f"{tile.x}:{tile.y}"] = i
