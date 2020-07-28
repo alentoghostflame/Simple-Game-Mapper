@@ -1,7 +1,6 @@
 from gamemapper.storage import ConfigData, RamData, TileData, SaveManager, SymbolData, TextureData
 import pathlib
 import string
-# import cairo
 import gi
 gi.require_version("Gtk", "3.0")
 from gi.repository import Gtk, Gdk, GdkPixbuf
@@ -31,7 +30,6 @@ class TextureManager:
         for texture_name in self._ram_data.textures:
             css_string += f"\n{self._ram_data.textures[texture_name].css}"
 
-        # self._css_provider.load_from_data(self._ram_data.textures[texture_name].css.encode("utf_8"))
         self._css_provider.load_from_data(css_string.encode("utf_8"))
 
     def _initialize_empty_background(self):
@@ -49,44 +47,9 @@ class TextureManager:
             if class_name.startswith("texture_"):
                 button_style.remove_class(class_name)
         texture_data = self._ram_data.textures.get(background_name, None)
-        # if not texture_data:
-        #     texture_data = self._ram_data.textures[EMPTY_TEXTURE]
         if texture_data:
             widget.get_style_context().add_class(texture_data.class_name)
             widget.show()
-
-
-    # def set_pic(self, overlay: Gtk.Overlay):
-    #     background = Gtk.Image()
-    #     background.set_from_file("textures/Right Arrow.png")
-    #     overlay.
-
-    # def draw(self, canvas: Gtk.DrawingArea, context: cairo.Context):
-    #     context.set_source_rgb(255, 255, 255)
-    #     SIZE = self._config.square_size
-    #     context.set_line_width(SIZE / 8)
-    #     context.set_tolerance(0.1)
-    #     context.set_line_join(cairo.LINE_JOIN_ROUND)
-    #     self.draw_shape(context, SIZE)
-    #
-    # def draw_shape(self, context: cairo.Context, size):
-    #     context.save()
-    #     context.new_path()
-    #     self.draw_left_arrow(context, size)
-    #     context.close_path()
-    #     context.stroke()
-    #     context.restore()
-    #
-    # def draw_triangle(self, context: cairo.Context, size):
-    #     context.move_to(size / 2, 0)
-    #     context.line_to(size / 2, size - 1)
-    #     # context.rel_line_to(size, 2 * size)
-    #     # context.rel_line_to(-2 * size, 0)
-    #
-    # def draw_left_arrow(self, context: cairo.Context, size):
-    #     context.move_to(size * 0.1, size * 0.1)
-    #     context.line_to(size * 0.9, size / 2.2)
-    #     context.line_to(size * 0.1, size * 0.9)
 
 
 class SimpleGameMapperGUI:
@@ -216,17 +179,15 @@ class TopMenuBar:
             self._ram_data.last_save_folder = "/".join(split_file_path[:-1])
             self._ram_data.last_save_name = split_file_path[-1]
 
-            print(f"{self._ram_data.last_save_folder}   {self._ram_data.last_save_name}")
             file_path = dialog.get_filename()
             self.saves.ram_to_disk(file_path)
         elif response == Gtk.ResponseType.CANCEL:
-            print("CANCEL PRESSED")
+            pass
 
         dialog.destroy()
 
     def on_load_pressed(self, button):
         dialog = Gtk.FileChooserDialog(title="Load from...", action=Gtk.FileChooserAction.OPEN)
-        # dialog.set_current_folder("saves")
         if self._ram_data.last_save_folder:
             dialog.set_current_folder(self._ram_data.last_save_folder)
         else:
@@ -247,7 +208,7 @@ class TopMenuBar:
             self._symbol_load_func()
             self._map_load_func()
         elif response == Gtk.ResponseType.CANCEL:
-            print("CANCEL PRESSED")
+            pass
 
         dialog.destroy()
 
@@ -402,18 +363,13 @@ class TileButton:
         self._ram_data = ram_data
         self._textures = textures
         self._preferred_size = size
-        # self._drawing_area = Gtk.DrawingArea()
-        # self._drawing_area = Gtk.Label(label="HI THERE")
-        # self.button_overlay = Gtk.Overlay()
         self._tile_data = tile_data
         self.button = Gtk.ToggleButton(relief=Gtk.ReliefStyle.NONE, **kwargs)
 
         if setup:
             self.setup_button()
-            # self.setup_canvas()
 
     def setup_button(self):
-        # self.button_overlay.add(self.button)
         self.button.get_style_context().add_class("map_button")
         self.button.set_size_request(self._preferred_size, self._preferred_size)
         self.button.connect("toggled", self.on_toggle)
@@ -513,7 +469,6 @@ class OptionSideBar:
         self.texture_scroll.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
         self.texture_scroll.add(self.texture_list)
         self.texture_list.connect("row-selected", self.on_texture_row_selected)
-        # self.texture_list.add(Gtk.Label(label="Default Page 2"))
 
         self.notebook.append_page(self.symbol_scroll, Gtk.Label(label="Symbols"))
         self.notebook.append_page(self.texture_scroll, Gtk.Label(label="Textures"))
@@ -566,7 +521,6 @@ class SymbolWidget:
     def __init__(self, symbol_data: SymbolData, setup=True):
         self.symbol_data: SymbolData = symbol_data
         self._label = Gtk.Label(label=symbol_data.character, halign="start")
-        # self._label.get_label()
         self._entry = Gtk.Entry(halign="end")
 
         if setup:
@@ -601,14 +555,11 @@ class TextureWidget:
     def setup(self):
         if pathlib.Path(self._texture_data.path).is_file():
             # noinspection PyArgumentList,PyCallByClass
-            pixbuf = GdkPixbuf.Pixbuf.new_from_file_at_size(self._texture_data.path, self._config.square_size,
-                                                            self._config.square_size)
-        # self._image.set_from_file(self._texture_data.path)
-            self._image.set_from_pixbuf(pixbuf)
+            pixel_buffer = GdkPixbuf.Pixbuf.new_from_file_at_size(self._texture_data.path, self._config.square_size,
+                                                                  self._config.square_size)
+            self._image.set_from_pixbuf(pixel_buffer)
         else:
             self._image.set_from_icon_name(Gtk.STOCK_MISSING_IMAGE, Gtk.IconSize.DIALOG)
-        # self._image.set_pixel_size(self._config.square_size)
-        # self._image.size
         self.add_me.attach(self._text, 1, 0, 1, 1)
         self.add_me.attach(self._image, 0, 0, 1, 1)
 
