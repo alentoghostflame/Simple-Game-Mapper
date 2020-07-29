@@ -8,11 +8,21 @@ from gi.repository import Gtk, Gdk, GdkPixbuf
 
 class TextureManager:
     def __init__(self, config: ConfigData, ram_data: RamData):
+        """
+        Loads and manages TextureData objects in the given RamData object.
+
+        :param config: ConfigData object to read from.
+        :param ram_data: RamData object to read from and write to.
+        """
         self._config = config
         self._ram_data = ram_data
         self._css_provider = Gtk.CssProvider()
 
     def load(self):
+        """
+        Loads all textures from the textures folder into RAM.
+        :return:
+        """
         # noinspection PyArgumentList
         Gtk.StyleContext.add_provider_for_screen(Gdk.Screen.get_default(), self._css_provider,
                                                  Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
@@ -30,27 +40,57 @@ class TextureManager:
         self._css_provider.load_from_data(css_string.encode("utf_8"))
 
     def _initialize_empty_background(self):
+        """
+        Creates the empty texture class.
+        :return:
+        """
         empty_texture = TextureData(EMPTY_TEXTURE, EMPTY_TEXTURE.lower())
         empty_texture.css = f".{empty_texture.class_name} {{ }}"
         self._ram_data.textures[empty_texture.name] = empty_texture
 
     def _process_file(self, file: pathlib.Path):
+        """
+        Turns an image path into a TextureData object that's loaded into RAM.
+
+        :param file: pathlib.Path object that leads to an image.
+        :return:
+        """
         texture_data = TextureData(file.stem, str(file.absolute()))
         self._ram_data.textures[texture_data.name] = texture_data
 
-    def set_background(self, widget: Gtk.Widget, background_name):
+    def set_texture(self, widget: Gtk.Widget, texture_name: str) -> bool:
+        """
+        Clears existing CSS texture class(es) from the given Gtk.Widget and gives it the CSS texture class that
+        corresponds with the given background name, if it exists.
+
+        :param widget: Gtk.Widget object to change the background of.
+        :param texture_name: String name of the texture to apply.
+
+        :return: Boolean True if a corresponding class was found and applied, False otherwise.
+        """
         button_style: Gtk.StyleContext = widget.get_style_context()
         for class_name in button_style.list_classes():
             if class_name.startswith("texture_"):
                 button_style.remove_class(class_name)
-        texture_data = self._ram_data.textures.get(background_name, None)
+        texture_data = self._ram_data.textures.get(texture_name, None)
         if texture_data:
             widget.get_style_context().add_class(texture_data.class_name)
             widget.show()
+            return True
+        else:
+            return False
 
 
 class SimpleGameMapperGUI:
     def __init__(self, config: ConfigData, ram_data: RamData, saves: SaveManager, textures: TextureManager):
+        """
+        Main GTK GUI object for the simple game mapper, controlling the Gtk.Window object. Manages the top-most events.
+
+        :param config: ConfigData object to read from.
+        :param ram_data: RamData object to read from and write to.
+        :param saves: SaveManager object to use.
+        :param textures: TextureManager object to use.
+        """
         self._config: ConfigData = config
         self._ram_data: RamData = ram_data
         self._saves: SaveManager = saves
@@ -61,30 +101,60 @@ class SimpleGameMapperGUI:
         self._main_layout = MainLayout(self._config, self._ram_data, self._saves, self._textures)
 
     def setup(self):
+        """
+        Shortcut to run all setup functions.
+        :return:
+        """
         self.setup_window()
         self.setup_css()
         self.setup_main_layout()
 
     def setup_window(self):
+        """
+        Sets up the main Gtk.Window object.
+        :return:
+        """
         self._window.connect("delete-event", self._quit_program)
+        self._window.connect("destroy", Gtk.main_quit)
         self._window.set_default_size(800, 400)
 
     def setup_css(self):
+        """
+        Loads the static CSS file.
+        :return:
+        """
         self._css_provider.load_from_path("gamemapper/simple_map.css")
         # noinspection PyArgumentList
         Gtk.StyleContext.add_provider_for_screen(Gdk.Screen.get_default(), self._css_provider,
                                                  Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
 
     def setup_main_layout(self):
+        """
+        Sets up the MainLayout object.
+        :return:
+        """
         self._window.add(self._main_layout.grid)
         self._main_layout.setup()
 
     def run(self):
+        """
+        Has all GTK GUI objects in the application display and starts the blocking Gtk graphical loop.
+        :return:
+        """
         self._window.show_all()
         Gtk.main()
 
     # noinspection PyMethodMayBeStatic,PyUnusedLocal
-    def _quit_program(self, window: Gtk.Window, event: Gdk.Event):
+    def _quit_program(self, window: Gtk.Window = None, event: Gdk.Event = None):
+        """
+        Intercepts the quit command with a prompt asking the user if they want to quit for sure. If Yes is selected,
+        Gtk.main_quit() is called and the window is closed. If No is selected, the mapper continues.
+
+        :param window: Gtk.Window object, ignored.
+        :param event: Gdk.Event object, ignored.
+
+        :return: False if the user selects No, True otherwise to destroy the window.
+        """
         return_value = False
         dialog = Gtk.Dialog(Gtk.DialogFlags.MODAL, title="Quit Mapper?")
         dialog.add_button(Gtk.STOCK_YES, Gtk.ResponseType.OK)
@@ -103,6 +173,14 @@ class SimpleGameMapperGUI:
 
 class MainLayout:
     def __init__(self, config: ConfigData, ram_data: RamData, saves: SaveManager, textures: TextureManager):
+        """
+        Manages the main grid that holds the biggest containers and has them work together.
+
+        :param config: ConfigData object to read from.
+        :param ram_data: RamData object to read from and write to.
+        :param saves: SaveManager object to use.
+        :param textures: TextureManager object to use.
+        """
         self._config: ConfigData = config
         self._ram_data: RamData = ram_data
         self._saves: SaveManager = saves
@@ -114,6 +192,11 @@ class MainLayout:
         self._side_bar = OptionSideBar(self._config, self._ram_data, self._textures)
 
     def setup(self):
+        """
+        Sets up the main grid and has its children run their setups as well.
+
+        :return:
+        """
         self.grid.attach(self._top_bar.toolbar, 0, 0, 1, 1)
         self.grid.attach(self._map_container.main_grid, 0, 1, 1, 1)
         self.grid.attach(self._side_bar.notebook, 1, 0, 1, 2)
@@ -129,6 +212,12 @@ class MainLayout:
 
 class TopMenuBar:
     def __init__(self, ram_data: RamData, saves: SaveManager):
+        """
+        Holds the top buttons, such as resetting, saving, and loading.
+
+        :param ram_data: RamData object to read from and write to.
+        :param saves: SaveManager object to use.
+        """
         self._ram_data = ram_data
         self._saves = saves
         self.toolbar = Gtk.Toolbar()
@@ -143,8 +232,13 @@ class TopMenuBar:
         self._symbol_load_func = None
 
     def setup(self):
+        """
+        Sets up all the buttons on the top visually and functionally, then assigns them their spot.
+        :return:
+        """
         self._new_button.set_icon_name(Gtk.STOCK_NEW)
         self._new_button.set_label("New")
+        self._new_button.connect("clicked", self._on_new_pressed)
 
         self._save_button.set_icon_name(Gtk.STOCK_SAVE)
         self._save_button.set_label("Save")
@@ -158,18 +252,38 @@ class TopMenuBar:
         self.toolbar.insert(self._save_button, 1)
         self.toolbar.insert(self._open_button, 2)
 
-        self._new_button.connect("clicked", self._reset_ui)
-
     def set_reset_functions(self, map_reset_func, symbol_reset_func):
+        """
+        Sets the functions to use when the map and symbols need to be reset.
+
+        :param map_reset_func: Function used to reset the map.
+        :param symbol_reset_func: Function used to reset the symbols.
+        :return:
+        """
         self._map_reset_func = map_reset_func
         self._symbol_reset_func = symbol_reset_func
 
     def set_load_from_ram_functions(self, map_load_func, symbol_load_func):
+        """
+        Sets the functions to use when the map and symbols need to be loaded from RamData.
+
+        :param map_load_func: Function used to load the map.
+        :param symbol_load_func: Function used to load the symbols.
+        :return:
+        """
         self._map_load_func = map_load_func
         self._symbol_load_func = symbol_load_func
 
     # noinspection PyUnusedLocal
-    def _reset_ui(self, button):
+    def _on_new_pressed(self, button: Gtk.ToolButton = None):
+        """
+        Triggers when the new button is pressed, opening a dialog to make sure that the user wants to reset. If the
+        user selects Yes, the maps and symbols are reset. Otherwise, nothing happens.
+        FIXME: If something errors, the dialog box will not close, requiring the application to be killed.
+
+        :param button: Gtk.ToolButton object, ignored.
+        :return:
+        """
         dialog = Gtk.Dialog(Gtk.DialogFlags.MODAL, title="Reset Map?")
         dialog.add_button(Gtk.STOCK_YES, Gtk.ResponseType.OK)
         dialog.add_button(Gtk.STOCK_NO, Gtk.ResponseType.CANCEL)
@@ -184,7 +298,16 @@ class TopMenuBar:
         dialog.destroy()
 
     # noinspection PyUnusedLocal
-    def _on_save_pressed(self, button):
+    def _on_save_pressed(self, button: Gtk.ToolButton = None):
+        """
+        Triggers when the save button is pressed, opening a dialog asking where to save the file and what name the file
+        should have. If the user selects a place to save, a save is made at that location and is recorded into RamData.
+        Otherwise, nothing happens.
+        FIXME: If something errors, the dialog box will not close, requiring the application to be killed.
+
+        :param button: Gtk.ToolButton object, ignored.
+        :return:
+        """
         dialog = Gtk.FileChooserDialog(title="Save to...", action=Gtk.FileChooserAction.SAVE)
         dialog.set_do_overwrite_confirmation(True)
         if self._ram_data.last_save_folder:
@@ -208,13 +331,22 @@ class TopMenuBar:
 
             file_path = dialog.get_filename()
             self._saves.ram_to_disk(file_path)
-        elif response == Gtk.ResponseType.CANCEL:
+        else:
             pass
 
         dialog.destroy()
 
     # noinspection PyUnusedLocal
     def _on_load_pressed(self, button):
+        """
+        Triggers when the load button is pressed, opening a dialog asking what file to load from. If the user selects
+        a file to load, it will attempt to load it into RamData and have the map and symbols load from RamData.
+        Otherwise, nothing happens.
+        FIXME: If something errors, the dialog box will not close, requiring the application to be killed.
+
+        :param button: Gtk.ToolButton object, ignored.
+        :return:
+        """
         dialog = Gtk.FileChooserDialog(title="Load from...", action=Gtk.FileChooserAction.OPEN)
         if self._ram_data.last_save_folder:
             dialog.set_current_folder(self._ram_data.last_save_folder)
@@ -235,13 +367,19 @@ class TopMenuBar:
             self._saves.disk_to_ram(file_path)
             self._symbol_load_func()
             self._map_load_func()
-        elif response == Gtk.ResponseType.CANCEL:
+        else:
             pass
 
         dialog.destroy()
 
     # noinspection PyMethodMayBeStatic
     def _add_filters(self, dialog: Gtk.FileChooserDialog):
+        """
+        Shortcut to add filter(s) to a given dialog.
+
+        :param dialog: Gtk.FileChooserDialog object to add filter(s) to.
+        :return:
+        """
         yaml_filter = Gtk.FileFilter()
         yaml_filter.set_name("YAML file")
         yaml_filter.add_mime_type("text/yaml")
@@ -250,6 +388,13 @@ class TopMenuBar:
 
 class MapContainer:
     def __init__(self, config: ConfigData, ram_data: RamData, textures: TextureManager):
+        """
+        Manages the map and closely related widgets.
+
+        :param config: ConfigData object to read from.
+        :param ram_data: RamData object to read from and write to.
+        :param textures: TextureManager object to use.
+        """
         self._config: ConfigData = config
         self._ram_data: RamData = ram_data
         self._textures: TextureManager = textures
@@ -265,11 +410,19 @@ class MapContainer:
         self._right_button = Gtk.Button(label="+", vexpand=True)
 
     def setup(self):
+        """
+        Shortcut to run all setup functions and initialize a basic grid.
+        :return:
+        """
         self.setup_buttons()
         self.setup_main_grid()
         self.initialize_default_grid()
 
     def setup_buttons(self):
+        """
+        Sets up all the buttons visually and functionally.
+        :return:
+        """
         self._top_button.get_style_context().add_class("map_expander_button")
         self._top_button.connect("clicked", self.add_top)
         self._bottom_button.get_style_context().add_class("map_expander_button")
@@ -280,6 +433,10 @@ class MapContainer:
         self._right_button.connect("clicked", self.add_right)
 
     def setup_main_grid(self):
+        """
+        Sets up the main grid visually and functionally and assigns the tile grid and buttons to their spot.
+        :return:
+        """
         self._scrolled_map.add(self._tile_grid)
         self.main_grid.attach(self._scrolled_map, 1, 1, 1, 1)
         self.main_grid.attach(self._top_button, 1, 0, 1, 1)
@@ -293,10 +450,23 @@ class MapContainer:
         self._tile_grid.get_style_context().add_class("map_holder")
 
     def initialize_default_grid(self):
+        """
+        Initializes the grid with the default size values in the config.
+        :return:
+        """
         self.initialize_grid(self._config.default_x_start, self._config.default_x_end, self._config.default_y_start,
                              self._config.default_y_end)
 
     def initialize_grid(self, x_start=0, x_end=0, y_start=0, y_end=0):
+        """
+        Clears the current layout and initializes the grid, sized with the given size values.
+
+        :param x_start: Left-most coordinate, needs to be smaller than x_end for valid results.
+        :param x_end: Right-most coordinate, needs to be bigger than x_start for valid results.
+        :param y_start: Top-most coordinate, needs to be smaller than y_end for valid results.
+        :param y_end: Bottom-most coordinate, needs to be bigger than y_start for valid results.
+        :return:
+        """
         self.clear_layout()
 
         self._ram_data.x_start = x_start
@@ -309,6 +479,11 @@ class MapContainer:
         self._tile_grid.show_all()
 
     def initialize_from_ram(self):
+        """
+        Clears the current layout (but not RamData) and initializes the grid, with size values from RamData and fetching
+        TileData from RamData when a reference is found.
+        :return:
+        """
         self.clear_layout(clear_ram=False)
 
         for x in range(self._ram_data.x_start, self._ram_data.x_end + 1):
@@ -321,17 +496,28 @@ class MapContainer:
 
         self._tile_grid.show_all()
 
-    def reset_layout(self):
-        self.initialize_default_grid()
-
     def clear_layout(self, clear_ram=True):
+        """
+        Shortcut to destroy all children of the tile_grid object and optionally clear the tile RamData.
+
+        :param clear_ram: Boolean True to clear the tile RamData, False to not.
+        :return:
+        """
         if clear_ram:
             self._ram_data.tiles.clear()
         if self._tile_grid.get_children():
             for button in self._tile_grid.get_children():
                 self._tile_grid.remove(button)
 
-    def add_tile_button(self, x, y, tile_data: TileData = None):
+    def add_tile_button(self, x: int, y: int, tile_data: TileData = None):
+        """
+        Shortcut to add a TileButton object with the given TileData at the given x and y coordinates
+
+        :param x: Integer X coordinate to place the TileButton object.
+        :param y: Integer Y coordinate to place the TileButton object.
+        :param tile_data: TileData object for the TileButton object to manipulate.
+        :return:
+        """
         if tile_data:
             tile_button = TileButton(self._ram_data, self._textures, tile_data, size=self._config.square_size)
         else:
@@ -342,7 +528,13 @@ class MapContainer:
         self._tile_grid.attach(tile_button.button, x, y, 1, 1)
 
     # noinspection PyUnusedLocal
-    def add_top(self, button):
+    def add_top(self, button: Gtk.Button):
+        """
+        Quickly adds a row of TileButtons to the top of the tile map.
+
+        :param button: Gtk.Button object, ignored.
+        :return:
+        """
         self._ram_data.y_start -= 1
         for x in range(self._ram_data.x_start, self._ram_data.x_end + 1):
             self.add_tile_button(x, self._ram_data.y_start)
@@ -350,6 +542,12 @@ class MapContainer:
 
     # noinspection PyUnusedLocal
     def add_bottom(self, button):
+        """
+        Quickly adds a row of TileButtons to the bottom of the tile map.
+
+        :param button: Gtk.Button object, ignored.
+        :return:
+        """
         self._ram_data.y_end += 1
         for x in range(self._ram_data.x_start, self._ram_data.x_end + 1):
             self.add_tile_button(x, self._ram_data.y_end)
@@ -357,6 +555,12 @@ class MapContainer:
 
     # noinspection PyUnusedLocal
     def add_left(self, button):
+        """
+        Quickly adds a column of TileButtons to the left of the tile map.
+
+        :param button: Gtk.Button object, ignored.
+        :return:
+        """
         self._ram_data.x_start -= 1
         for y in range(self._ram_data.y_start, self._ram_data.y_end + 1):
             self.add_tile_button(self._ram_data.x_start, y)
@@ -364,16 +568,29 @@ class MapContainer:
 
     # noinspection PyUnusedLocal
     def add_right(self, button):
+        """
+        Quickly adds a column of TileButtons to the right of the tile map.
+
+        :param button: Gtk.Button object, ignored.
+        :return:
+        """
         self._ram_data.x_end += 1
         for y in range(self._ram_data.y_start, self._ram_data.y_end + 1):
             self.add_tile_button(self._ram_data.x_end, y)
         self._tile_grid.show_all()
 
     # noinspection PyUnusedLocal
-    def _on_keypress(self, button, event: Gdk.EventKey):
-        if event.get_keyval()[1] in {Gdk.KEY_Up, Gdk.KEY_Down, Gdk.KEY_Left, Gdk.KEY_Right}:
-            return False
-        elif event.get_keyval()[1] == Gdk.KEY_Escape:
+    def _on_keypress(self, grid: Gtk.Grid, event: Gdk.EventKey):
+        """
+        Triggers when a key is pressed while an object in the main grid is focused. If the key is an arrow or escape key
+        it keeps its normal function. Otherwise if the key is alpha, it is added to the list of currently held down
+        keys.
+
+        :param grid: Gtk.Grid object, ignored.
+        :param event: Gdk.EventKey object, used to get what key was pressed.
+        :return:
+        """
+        if event.get_keyval()[1] in {Gdk.KEY_Up, Gdk.KEY_Down, Gdk.KEY_Left, Gdk.KEY_Right, Gdk.KEY_Escape}:
             return False
         else:
             if event.string.isalpha():
@@ -381,10 +598,17 @@ class MapContainer:
         return True
 
     # noinspection PyUnusedLocal
-    def _on_keyrelease(self, button, event: Gdk.EventKey):
-        if event.get_keyval()[1] in {Gdk.KEY_Up, Gdk.KEY_Down, Gdk.KEY_Left, Gdk.KEY_Right}:
-            return False
-        elif event.get_keyval()[1] == Gdk.KEY_Escape:
+    def _on_keyrelease(self, grid: Gtk.Grid, event: Gdk.EventKey):
+        """
+        Triggers when a key is released while an object in the main grid is focused. If the key is an arrow or escape
+        key it keeps its normal function. Otherwise it if the key is alpha, it is removed from the list of currently
+        held down keys.
+
+        :param grid: Gtk.Grid object, ignored.
+        :param event: Gdk.EventKey object, used to get what key was released.
+        :return:
+        """
+        if event.get_keyval()[1] in {Gdk.KEY_Up, Gdk.KEY_Down, Gdk.KEY_Left, Gdk.KEY_Right, Gdk.KEY_Escape}:
             return False
         else:
             if event.string.isalpha():
@@ -394,6 +618,16 @@ class MapContainer:
 
 class TileButton:
     def __init__(self, ram_data: RamData, textures: TextureManager, tile_data: TileData, size=40, setup=True, **kwargs):
+        """
+        Manages the Gtk.ToggleButton object that gets placed in the tile grid.
+
+        :param ram_data: RamData object to read and write to.
+        :param textures: TextureManager object used to set the texture of the Gtk.ToggleButton.
+        :param tile_data: TileData object to read and write to.
+        :param size: Integer pixel size to try to be.
+        :param setup: Boolean True to run the setup function, False to not.
+        :param kwargs: Additional keyword arguments to pipe to the Gtk.ToggleButton.
+        """
         self._ram_data = ram_data
         self._textures = textures
         self._preferred_size = size
@@ -404,21 +638,35 @@ class TileButton:
             self.setup_button()
 
     def setup_button(self):
+        """
+        Visually and functionally sets up the button, then if there's readable data
+        :return:
+        """
         self.button.get_style_context().add_class("map_button")
         self.button.set_size_request(self._preferred_size, self._preferred_size)
         self.button.connect("toggled", self._on_toggle)
         self.button.connect("button-press-event", self._on_press)
         self.button.connect("enter", self._on_mouse_enter)
+
         if self._tile_data.enabled:
             self.button.set_active(True)
         if self._tile_data.tags:
             self.update_tags()
             self.update_tooltip()
-        if self._tile_data.texture != EMPTY_TEXTURE:
-            self._textures.set_background(self.button, self._tile_data.texture)
+        if self._tile_data.texture and self._tile_data.texture != EMPTY_TEXTURE:
+            self._textures.set_texture(self.button, self._tile_data.texture)
 
     # noinspection PyUnusedLocal
     def _on_press(self, button: Gtk.ToggleButton, event: Gdk.EventButton) -> bool:
+        """
+        Triggered when the button is pressed, contains the logic controlling if symbols get updated, textures get
+        changed, or the button is toggled.
+
+        :param button: Gtk.ToggleButton object to change the texture of when needed.
+        :param event: Gdk.EventButton object, ignored.
+
+        :return: Boolean True to consume the input, False to let it toggle the button.
+        """
         return_value = False
 
         if self.button.get_active():
@@ -429,12 +677,12 @@ class TileButton:
                 return_value = True
             elif self._ram_data.selected_texture != EMPTY_TEXTURE:
                 self._tile_data.texture = self._ram_data.selected_texture
-                self._textures.set_background(button, self._tile_data.texture)
+                self._textures.set_texture(button, self._tile_data.texture)
                 return_value = True
             elif self._ram_data.selected_texture == EMPTY_TEXTURE and \
                     (self._tile_data.texture and self._tile_data.texture != EMPTY_TEXTURE):
                 self._tile_data.texture = self._ram_data.selected_texture
-                self._textures.set_background(button, self._tile_data.texture)
+                self._textures.set_texture(button, self._tile_data.texture)
                 return_value = True
         else:
             if self._ram_data.held_buttons:
@@ -443,18 +691,28 @@ class TileButton:
                 self.update_tooltip()
             elif self._ram_data.selected_texture != EMPTY_TEXTURE:
                 self._tile_data.texture = self._ram_data.selected_texture
-                self._textures.set_background(button, self._tile_data.texture)
+                self._textures.set_texture(button, self._tile_data.texture)
         return return_value
 
-    def _on_toggle(self, button):
+    def _on_toggle(self, button: Gtk.ToggleButton):
+        """
+        Triggered when the button is toggled. Updates the TileData object as needed.
+
+        :param button: Gtk.ToggleButton object to change the texture of when needed.
+        :return:
+        """
         self._tile_data.enabled = self.button.get_active()
         if not self._tile_data.enabled:
             self._tile_data.tags.clear()
             self.update_tags()
             self.update_tooltip()
-            self._textures.set_background(button, EMPTY_TEXTURE)
+            self._textures.set_texture(button, EMPTY_TEXTURE)
 
     def update_tags(self):
+        """
+        Updates the visual aspect of the tags/symbols, adding newlines and cutting off as needed.
+        :return:
+        """
         label_string = ""
         tag_count = 0
         for tag in self._tile_data.tags:
@@ -468,6 +726,10 @@ class TileButton:
         self.button.show_all()
 
     def update_tooltip(self):
+        """
+        Updates the tooltip with what data the current tags/symbols correspond with, if such data exists.
+        :return:
+        """
         tooltip_string = ""
         for tag in self._tile_data.tags:
             if self._ram_data.symbols[tag].get_value():
@@ -481,6 +743,13 @@ class TileButton:
 
 class OptionSideBar:
     def __init__(self, config: ConfigData, ram_data: RamData, textures: TextureManager):
+        """
+        Manages the sidebar and the widgets in it.
+
+        :param config: ConfigData object to read from.
+        :param ram_data: RamData object to read from and write to.
+        :param textures: TextureManager object to use.
+        """
         self._config: ConfigData = config
         self._ram_data: RamData = ram_data
         self._textures: TextureManager = textures
@@ -491,6 +760,10 @@ class OptionSideBar:
         self._texture_list = Gtk.ListBox()
 
     def setup(self):
+        """
+        Sets up all the widgets in the sidebar and initializes the symbols and textures.
+        :return:
+        """
         self._symbol_scroll.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
         self._symbol_scroll.add(self._symbol_grid)
         self._texture_scroll.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
@@ -504,6 +777,12 @@ class OptionSideBar:
         self.initialize_textures()
 
     def clear_symbols(self, clear_ram=True):
+        """
+        Shortcut to destroy all children of the symbol grid and optionally clear the symbol RamData.
+
+        :param clear_ram: Boolean True to clear the symbol RamData, False to not.
+        :return:
+        """
         if clear_ram:
             self._ram_data.symbols.clear()
         if self._symbol_grid.get_children():
@@ -511,12 +790,20 @@ class OptionSideBar:
                 self._symbol_grid.remove(element)
 
     def initialize_symbols(self):
+        """
+        Initializes the symbol list with blank listings.
+        :return:
+        """
         self.clear_symbols()
         for i in range(len(string.ascii_uppercase)):
             self.add_symbol_row(i, string.ascii_uppercase[i])
         self._symbol_grid.show_all()
 
     def initialize_symbols_from_ram(self):
+        """
+        Initializes the symbol list, reading from RamData.
+        :return:
+        """
         self.clear_symbols(clear_ram=False)
         for i in range(len(string.ascii_uppercase)):
             self.add_symbol_row(i, string.ascii_uppercase[i],
@@ -524,6 +811,14 @@ class OptionSideBar:
         self._symbol_grid.show_all()
 
     def add_symbol_row(self, row: int, character: str, symbol_data: SymbolData = None):
+        """
+        Shortcut to add a SymbolWidget to the symbol grid.
+
+        :param row: Integer index to insert the SymbolWidget at, 0 being the top.
+        :param character: String character that the SymbolWidget will show.
+        :param symbol_data: Optional SymbolData object to correspond with the SymbolWidget.
+        :return:
+        """
         if symbol_data:
             symbol_widget = SymbolWidget(symbol_data)
         else:
@@ -532,14 +827,24 @@ class OptionSideBar:
         symbol_widget.add_to_grid(self._symbol_grid, row)
 
     def initialize_textures(self):
+        """
+        Initializes the textures list.
+        :return:
+        """
         texture_name_list = list(self._ram_data.textures.keys())
         texture_name_list.sort()
         for texture_name in texture_name_list:
-            self._texture_list.add(TextureWidget(self._config, self._textures,
-                                                 self._ram_data.textures[texture_name]).add_me)
+            self._texture_list.add(TextureWidget(self._config, self._ram_data.textures[texture_name]).add_me)
 
     # noinspection PyUnusedLocal
     def _on_texture_row_selected(self, listbox: Gtk.ListBox, row: Gtk.ListBoxRow):
+        """
+        Triggers when a texture row is selected, updating RamData with the currently selected texture.
+
+        :param listbox: Gtk.ListBox object, ignored.
+        :param row: Gtk.ListBoxRow object, used to get the label containing the texture name.
+        :return:
+        """
         for child in row.get_child():
             if isinstance(child, Gtk.Label):
                 self._ram_data.selected_texture = child.get_label().strip()
@@ -547,6 +852,12 @@ class OptionSideBar:
 
 class SymbolWidget:
     def __init__(self, symbol_data: SymbolData, setup=True):
+        """
+        A group of related functions to manage a symbol listing.
+
+        :param symbol_data: SymbolData object to read from.
+        :param setup: Boolean True to run the setup function, False to not.
+        """
         self._symbol_data: SymbolData = symbol_data
         self._label = Gtk.Label(label=symbol_data.character, halign="start")
         self._entry = Gtk.Entry(halign="end")
@@ -555,6 +866,10 @@ class SymbolWidget:
             self.setup()
 
     def setup(self):
+        """
+        Visually sets up the widgets and functionally sets up the SymbolData object.
+        :return:
+        """
         self._label.get_style_context().add_class("sidebar_symbol_label")
         self._symbol_data.register_get_func(self.get_value)
 
@@ -562,17 +877,34 @@ class SymbolWidget:
             self._entry.set_text(self._symbol_data.default_value)
 
     def get_value(self):
+        """
+        Gets the current text in the Gtk.Entry object.
+        :return:
+        """
         return self._entry.get_text()
 
     def add_to_grid(self, grid: Gtk.Grid, index: int):
+        """
+        Shortcut to add both widgets to the given Gtk.Grid object.
+
+        :param grid: Gtk.Grid object to add to.
+        :param index: Integer index of the row to add to, with 0 at the top.
+        :return:
+        """
         grid.attach(self._label, 0, index, 1, 1)
         grid.attach(self._entry, 1, index, 1, 1)
 
 
 class TextureWidget:
-    def __init__(self, config: ConfigData, textures: TextureManager, texture_data: TextureData, setup=True):
+    def __init__(self, config: ConfigData, texture_data: TextureData, setup=True):
+        """
+        A group of widgets to display texture information.
+
+        :param config: ConfigData object to read from.
+        :param texture_data: TextureData object to read from.
+        :param setup: Boolean True to run the setup function, False to not.
+        """
         self._config = config
-        self._textures = textures
         self._texture_data = texture_data
         self.add_me = Gtk.Grid()
         self._image = Gtk.Image(halign="start", icon_size=self._config.square_size, pixel_size=self._config.square_size)
@@ -581,6 +913,12 @@ class TextureWidget:
             self.setup()
 
     def setup(self):
+        """
+        Visually sets up the Gtk.Image object. If TextureData.path leads to a file, it attempts to load it from disk.
+        If it's not a file, it uses the stock missing image.
+        Also puts the widgets in the right place on the Gtk.Grid object.
+        :return:
+        """
         if pathlib.Path(self._texture_data.path).is_file():
             # noinspection PyArgumentList,PyCallByClass
             pixel_buffer = GdkPixbuf.Pixbuf.new_from_file_at_size(self._texture_data.path, self._config.square_size,
